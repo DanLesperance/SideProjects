@@ -1,20 +1,19 @@
-import urllib.request as urllib
-from bs4 import BeautifulSoup
 import sys
 from datetime import datetime
 from datetime import timedelta
+from selenium import webdriver
+from selenium.webdriver.chrome.options import Options
 
-##Thinking about making this part print out questions for the user
 depart = sys.argv[1]
 arrive = sys.argv[2]
-date_of_travel_input =  sys.argv[3] + " " + sys.argv[4] + " " + sys.argv[5]
+date_of_travel_input = sys.argv[3] + " " + sys.argv[4] + " " + sys.argv[5]
 length = sys.argv[6]
 
 # Ensure proper formatting for the date
 try:
     date_of_travel = datetime.strptime(date_of_travel_input, '%B %d %Y').date()
 except ValueError:
-    print >> sys.stderr, "Date format should be name of month (November) day and 4 digit year"
+    print("Date format should be name of month (November) day and 4 digit year", file=sys.stderr)
     sys.exit()
 
 # gives same date format for the return flight by adding on the number of days you'll be gone
@@ -22,16 +21,21 @@ return_flight_date = date_of_travel + timedelta(days=int(length))
 
 
 # URL address creation
-skiplagged_page = "https://skiplagged.com/flights/" + depart + '/' + arrive + '/' + str(date_of_travel) + '/' + \
+skiplagged_page = "http://skiplagged.com/flights/" + depart + '/' + arrive + '/' + str(date_of_travel) + '/' + \
                   str(return_flight_date)
 
-# Start scraping from html
-page = urllib.urlopen(skiplagged_page)
+#Run without visual browser pop-up with chrome
+options = Options()
+options.headless = True
+driver = webdriver.Chrome(chrome_options=options)
 
-soup = BeautifulSoup(page, 'html.parser')
 
-a=soup.find('section')
-print(a.attrs)
+driver.get(skiplagged_page)
+print("Skiplagged has opened")
 
+
+#span2 is the location of the price in html on skiplagged's page
+price = driver.find_elements_by_class_name("span2")
+print(len(price))
 
 
