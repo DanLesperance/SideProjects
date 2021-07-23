@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <link href="../css/phpMM.css" rel="StyleSheet" type="text/css" />
+    </head>
+    <body>
+        <div id="header"><h1>PHP & MYSQL: THE MISSING MANUAL</h1></div>
+        <div id="example">EXAMPLE -1</div>
+
+        <div id="content">
+            <h1> Join the Missing Manual (digital) Social CLub</h1>
+            <p> Please enter your online connections below:</p>
+            <form action="scripts/getFormInfo.php" method="POST">
+                <fieldset>
+                    <label for="first_name">First Name:</label>
+                    <input type="text" name="first_name" size="20" /><br />
+                    <label for="last_name"> Last Name:</label>
+                    <input type="text" name="last_name" size="20" /><br />
+                    <label for="email"> Email:</label>
+                    <input type="text" name="email" size="50" /><br />
+                    <label for="facebook_url"> Facebook:</label>
+                    <input type="text" name="facebook_url" size="50" /><br />
+                    <label for="twitter_handle"> Twitter Handle:</label>
+                    <input type="text" name="twitter_handle" size="50" /><br />
+                </fieldset>
+                <br />
+                <fieldset class="center">
+                    <input type="submit" value="Join the club!" />
+                    <input type="reset" value="Clear and Restart" />
+                </fieldset>
+            </form>
+        </div>
+    <div id="footer"></div>
+    </body>
+</html>
