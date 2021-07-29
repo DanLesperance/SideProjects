@@ -4,7 +4,7 @@ import pandas as pd
 from sqlalchemy import create_engine
 
 
-
+# Pulls all the years from the specific F1 page
 def url_pull(F1page):
     # Start scraping from html
     options = Options()
@@ -18,6 +18,8 @@ def url_pull(F1page):
     for a in elem:
         content = driver.execute_script('return arguments[0].textContent;',a)
         content= content.strip()
+        # If the value can be turned into an int, it will be saved; otherwise we will break.
+        # If is_num will also work here, but I want to ensure no floating points exist either.
         try:
             int(content)
         except ValueError:
@@ -28,18 +30,27 @@ def url_pull(F1page):
 
 # Pull each table from the website for each given year, the different categories are different tables that can be pulled.
 def html_to_df_csvDump(Formula1Years,sqlCon):
+    # These categories can be found on this html_start page.  They are the 4 different categories to change the table.
     html_start ='https://www.formula1.com/en/results.html'
     categories = ['races','drivers','team','fastest-laps']
+    # We want every category of every year.  This is the cleanest way to do this as we will loop through all 60+ years, and then loop to the next category.
     for cat in categories:
         for year in Formula1Years:
+            # This try except block will continue onto the next loop on any new_html that doesn't result in a table.
             new_html = html_start+'/'+year+'/'+cat+'.html'
             try:
                 table = pd.read_html(new_html)
             except ValueError:
-                break
+                continue
+            # Since pd.read_html brings up a list of tables on each page, we just want the first iteration.
+            # For this web address and all the ones that are utilized through this script there is only 1 table each time we do this.
             df = table[0]
+            # Removing the index column, so this doesn't end up in the db.
             df['year'] = pd.Series([year for x in range(len(df.index))])
             df.dropna(how='all', axis=1, inplace=True)
+            # A few data cleaning if statements depending on which category we are in.
+            # Since Pos is entered as an int, we want to make sure EX or DQ are entered as Pos 0 (ie. given no position)
+            # Also wanted to split the three different identifiers in the name, First Name, Last Name, and Three letter identifier.
             if cat == 'drivers' or cat == 'fastest-laps':
                 df[['FirstName','LastIdentifier']] = df['Driver'].str.split('  ',1,expand=True)
                 df[['LastName','Identifier']] = df['LastIdentifier'].str.split('  ',1,expand=True)
@@ -52,6 +63,7 @@ def html_to_df_csvDump(Formula1Years,sqlCon):
                 df[['FirstName', 'LastIdentifier']] = df['Winner'].str.split('  ', 1, expand=True)
                 df[['LastName', 'WinningIdentifier']] = df['LastIdentifier'].str.split('  ', 1, expand=True)
                 df = df.drop(['Winner', 'LastIdentifier'], axis=1)
+            # Added to sql
             df.to_sql(con=sqlCon, name=cat, if_exists='append')
             #if year == '2021':
                 #df.to_csv('Formula1_' + cat + '.csv', index=False)
