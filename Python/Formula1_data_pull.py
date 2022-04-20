@@ -87,7 +87,7 @@ def html_to_df_csvDump(Formula1Years,sqlCon):
 
 ### Main
 # URL address creation
-password = '100199B1ology#'
+
 formula1_page = "https://www.formula1.com/en/results.html/2021/races.html"
 sqlEngine = create_engine('mysql+pymysql://dmlesper:'+password+'@formula1-full-data.mysql.database.azure.com:3306/formula1',
                           connect_args={'ssl':{'key':'whatever'}})
