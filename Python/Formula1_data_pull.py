@@ -3,7 +3,8 @@ from selenium.webdriver.chrome.options import Options
 import pandas as pd
 from sqlalchemy import create_engine
 import pymysql
-from pymysql import cursors
+import mysql.connector
+from mysql.connector import errorcode
 import lxml
 from webdriver_manager.chrome import ChromeDriverManager
 import html5lib
@@ -13,6 +14,8 @@ from datetime import datetime
 
 #Set up current year
 YEAR = str(datetime.now().year)
+# cert
+PATH_TO_CERT='C:/Users/danle/Documents/important/DigiCertGlobalRootG2.crt.pem'
 
 
 # Pulls all the years from the specific F1 page
@@ -40,7 +43,7 @@ def url_pull_years(F1page):
     return years
 
 # Pull each table from the website for each given year, the different categories are different tables that can be pulled.
-def html_to_df_csvDump(Formula1Years,current_year):
+def html_to_df_csvDump(Formula1Years,current_year,cert_path):
     # These categories can be found on this html_start page.  They are the 4 different categories to change the table.
     html_start ='https://www.formula1.com/en/results.html'
     categories = ['races','drivers','team','fastest-laps']
@@ -73,6 +76,8 @@ def html_to_df_csvDump(Formula1Years,current_year):
                 df = df.drop(['Driver','LastIdentifier'],axis=1)
                 if cat == 'drivers':
                     df.loc[(df['Pos'] == 'DQ'),'Pos'] = '0'
+                else:
+                    cat = 'fastestlaps'
             elif cat == 'team':
                 df.loc[(df['Pos'] == 'EX'), 'Pos'] = '0'
             elif cat == 'races':
@@ -82,17 +87,32 @@ def html_to_df_csvDump(Formula1Years,current_year):
             # Prior years to current year should have data finalized already and will not change
             # However current year data will definitely update as it comes in
             if year == current_year:
-                print(df)
-                continue
-                '''
-                connection = pymysql.connect(host='formula1-full-data.mysql.database.azure.com',
-                                    password=pswd,
-                                    database='formula1',
-                                    charset='utf8mb4',
-                                    cursorclass=pymysql.cursors.DictCursor)
-                with connection:
-                    with connection.curosr() as cursor:
-                 '''
+                ls = list(df.columns)
+                print(ls)
+                #continue
+                config = {
+                    'host': 'formula1-full-data.mysql.database.azure.com',
+                    'user': 'dmlesper',
+                    'password': pswd,
+                    'database': 'formula1',
+                    'client_flags': [mysql.connector.ClientFlag.SSL],
+                    'ssl_ca': cert_path
+                }
+                try:
+                    conn = mysql.connector.connect(**config)
+                    print('Connected')
+                except mysql.connector.Error as err:
+                    print(err)
+                else:
+                    cursor = conn.cursor()
+                    query = """SELECT year FROM {category} WHERE year = {year}""".format(category=cat,year=current_year)
+                    cursor.execute(query)
+                    rows = cursor.fetchall()
+                    cursor.close()
+                    conn.close()
+
+
+
 
             else:
                 continue
@@ -107,6 +127,6 @@ def html_to_df_csvDump(Formula1Years,current_year):
 # URL address creation
 formula1_page='https://www.formula1.com/en/results.html'
 yrs = url_pull_years(formula1_page)
-html_to_df_csvDump(yrs,YEAR)
+html_to_df_csvDump(yrs,YEAR,PATH_TO_CERT)
 
 
