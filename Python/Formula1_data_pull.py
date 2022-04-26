@@ -3,11 +3,16 @@ from selenium.webdriver.chrome.options import Options
 import pandas as pd
 from sqlalchemy import create_engine
 import pymysql
+from pymysql import cursors
 import lxml
 from webdriver_manager.chrome import ChromeDriverManager
 import html5lib
+from datetime import datetime
 
 
+
+#Set up current year
+YEAR = str(datetime.now().year)
 
 
 # Pulls all the years from the specific F1 page
@@ -35,7 +40,7 @@ def url_pull_years(F1page):
     return years
 
 # Pull each table from the website for each given year, the different categories are different tables that can be pulled.
-def html_to_df_csvDump(Formula1Years,sqlCon):
+def html_to_df_csvDump(Formula1Years,current_year):
     # These categories can be found on this html_start page.  They are the 4 different categories to change the table.
     html_start ='https://www.formula1.com/en/results.html'
     categories = ['races','drivers','team','fastest-laps']
@@ -44,8 +49,8 @@ def html_to_df_csvDump(Formula1Years,sqlCon):
     for cat in categories:
         for year in Formula1Years:
             # As the 2022 year hasn't begun, no values will populate which will cause the script to break
-            if year == '2022':
-                continue
+            #if year == '2022':
+            #    continue
             new_html = html_start+'/'+year+'/'+cat+'.html'
             try:
                 table = pd.read_html(new_html)
@@ -71,28 +76,37 @@ def html_to_df_csvDump(Formula1Years,sqlCon):
             elif cat == 'team':
                 df.loc[(df['Pos'] == 'EX'), 'Pos'] = '0'
             elif cat == 'races':
-                print(year)
-                print(df)
                 df[['FirstName', 'LastIdentifier']] = df['Winner'].str.split('  ', 1, expand=True)
                 df[['LastName', 'WinningIdentifier']] = df['LastIdentifier'].str.split('  ', 1, expand=True)
                 df = df.drop(['Winner', 'LastIdentifier'], axis=1)
-            # Added to sql
-            df.to_sql(con=sqlCon, name=cat, if_exists='append', index=False)
-            #if year == '2021':
-                #df.to_csv('Formula1_' + cat + '.csv', index=False)
-            #else:
-                #df.to_csv('Formula1_' + cat + '.csv', index=False,mode='a',header=False)
+            # Prior years to current year should have data finalized already and will not change
+            # However current year data will definitely update as it comes in
+            if year == current_year:
+                print(df)
+                continue
+                '''
+                connection = pymysql.connect(host='formula1-full-data.mysql.database.azure.com',
+                                    password=pswd,
+                                    database='formula1',
+                                    charset='utf8mb4',
+                                    cursorclass=pymysql.cursors.DictCursor)
+                with connection:
+                    with connection.curosr() as cursor:
+                 '''
 
-
+            else:
+                continue
+                # Added to sql
+                sqlCon = create_engine(
+                    'mysql+pymysql://dmlesper:' + pswd + '@formula1-full-data.mysql.database.azure.com:3306/formula1',
+                    connect_args={'ssl': {'key': 'whatever'}})
+                df.to_sql(con=sqlCon, name=cat, if_exists='append', index=False)
+                sqlCon.dispose()
 
 ### Main
 # URL address creation
-
-formula1_page = "https://www.formula1.com/en/results.html/2021/races.html"
-sqlEngine = create_engine('mysql+pymysql://dmlesper:'+password+'@formula1-full-data.mysql.database.azure.com:3306/formula1',
-                          connect_args={'ssl':{'key':'whatever'}})
+formula1_page='https://www.formula1.com/en/results.html'
 yrs = url_pull_years(formula1_page)
-html_to_df_csvDump(yrs,sqlEngine)
-#yr=['2021']
-#html_to_df_csvDump(yr,sqlEngine)
-sqlEngine.dispose()
+html_to_df_csvDump(yrs,YEAR)
+
+
