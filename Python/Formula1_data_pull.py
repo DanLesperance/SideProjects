@@ -3,11 +3,19 @@ from selenium.webdriver.chrome.options import Options
 import pandas as pd
 from sqlalchemy import create_engine
 import pymysql
+import mysql.connector
+from mysql.connector import errorcode
 import lxml
 from webdriver_manager.chrome import ChromeDriverManager
 import html5lib
+from datetime import datetime
 
 
+
+#Set up current year
+YEAR = str(datetime.now().year)
+# cert
+PATH_TO_CERT='C:/Users/danle/Documents/important/DigiCertGlobalRootG2.crt.pem'
 
 
 # Pulls all the years from the specific F1 page
@@ -35,7 +43,7 @@ def url_pull_years(F1page):
     return years
 
 # Pull each table from the website for each given year, the different categories are different tables that can be pulled.
-def html_to_df_csvDump(Formula1Years,sqlCon):
+def html_to_df_csvDump(Formula1Years,current_year,cert_path):
     # These categories can be found on this html_start page.  They are the 4 different categories to change the table.
     html_start ='https://www.formula1.com/en/results.html'
     categories = ['races','drivers','team','fastest-laps']
@@ -44,8 +52,8 @@ def html_to_df_csvDump(Formula1Years,sqlCon):
     for cat in categories:
         for year in Formula1Years:
             # As the 2022 year hasn't begun, no values will populate which will cause the script to break
-            if year == '2022':
-                continue
+            #if year == '2022':
+            #    continue
             new_html = html_start+'/'+year+'/'+cat+'.html'
             try:
                 table = pd.read_html(new_html)
@@ -68,31 +76,67 @@ def html_to_df_csvDump(Formula1Years,sqlCon):
                 df = df.drop(['Driver','LastIdentifier'],axis=1)
                 if cat == 'drivers':
                     df.loc[(df['Pos'] == 'DQ'),'Pos'] = '0'
+                else:
+                    cat = 'fastestlaps'
             elif cat == 'team':
                 df.loc[(df['Pos'] == 'EX'), 'Pos'] = '0'
             elif cat == 'races':
-                print(year)
-                print(df)
                 df[['FirstName', 'LastIdentifier']] = df['Winner'].str.split('  ', 1, expand=True)
                 df[['LastName', 'WinningIdentifier']] = df['LastIdentifier'].str.split('  ', 1, expand=True)
                 df = df.drop(['Winner', 'LastIdentifier'], axis=1)
-            # Added to sql
-            df.to_sql(con=sqlCon, name=cat, if_exists='append', index=False)
-            #if year == '2021':
-                #df.to_csv('Formula1_' + cat + '.csv', index=False)
-            #else:
-                #df.to_csv('Formula1_' + cat + '.csv', index=False,mode='a',header=False)
+            # Prior years to current year should have data finalized already and will not change
+            # However current year data will definitely update as it comes in
+
+            if year == current_year:
+
+                #continue
+                config = {
+                    'host': 'formula1-full-data.mysql.database.azure.com',
+                    'user': 'dmlesper',
+                    'password': input('Password? '),
+                    'database': 'formula1',
+                    'client_flags': [mysql.connector.ClientFlag.SSL],
+                    'ssl_ca': cert_path
+                }
+                try:
+                    conn = mysql.connector.connect(**config)
+                    print('Connected')
+                except mysql.connector.Error as err:
+                    print(err)
+                else:
+                    cursor = conn.cursor()
+                    current_year_df = df[df["year"] == current_year]
+                    keys = list(current_year_df.columns)
+                    print(keys)
+                    df_values_listoflists=current_year_df.values.tolist()
+                    for df_value_list in df_values_listoflists:
+                        value_dictionary=dict(zip(keys,df_value_list))
+                        print(value_dictionary)
+                    query = """SELECT year FROM {category} WHERE year = {year}""".format(category=cat,year=current_year)
+                    cursor.execute(query)
+                    rows = cursor.fetchall()
+                    if len(rows) > 0:
+                        """"""
+                    cursor.close()
+                    conn.close()
+                    break
 
 
+
+
+            else:
+                continue
+                # Added to sql
+                sqlCon = create_engine(
+                    'mysql+pymysql://dmlesper:' + pswd + '@formula1-full-data.mysql.database.azure.com:3306/formula1',
+                    connect_args={'ssl': {'key': 'whatever'}})
+                df.to_sql(con=sqlCon, name=cat, if_exists='append', index=False)
+                sqlCon.dispose()
 
 ### Main
 # URL address creation
-
-formula1_page = "https://www.formula1.com/en/results.html/2021/races.html"
-sqlEngine = create_engine('mysql+pymysql://dmlesper:'+password+'@formula1-full-data.mysql.database.azure.com:3306/formula1',
-                          connect_args={'ssl':{'key':'whatever'}})
+formula1_page='https://www.formula1.com/en/results.html'
 yrs = url_pull_years(formula1_page)
-html_to_df_csvDump(yrs,sqlEngine)
-#yr=['2021']
-#html_to_df_csvDump(yr,sqlEngine)
-sqlEngine.dispose()
+html_to_df_csvDump(yrs,YEAR,PATH_TO_CERT)
+
+
