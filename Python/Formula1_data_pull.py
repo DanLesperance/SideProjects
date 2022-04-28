@@ -86,9 +86,8 @@ def html_to_df_csvDump(Formula1Years,current_year,cert_path):
                 df = df.drop(['Winner', 'LastIdentifier'], axis=1)
             # Prior years to current year should have data finalized already and will not change
             # However current year data will definitely update as it comes in
+
             if year == current_year:
-                ls = list(df.columns)
-                print(ls)
                 #continue
                 config = {
                     'host': 'formula1-full-data.mysql.database.azure.com',
@@ -105,9 +104,18 @@ def html_to_df_csvDump(Formula1Years,current_year,cert_path):
                     print(err)
                 else:
                     cursor = conn.cursor()
+                    current_year_df = df[df["year"] == current_year]
+                    keys = list(current_year_df.columns)
+                    print(keys)
+                    df_values_listoflists=current_year_df.values.tolist()
+                    for df_value_list in df_values_listoflists:
+                        value_dictionary=dict(zip(keys,df_value_list))
+                        print(value_dictionary)
                     query = """SELECT year FROM {category} WHERE year = {year}""".format(category=cat,year=current_year)
                     cursor.execute(query)
                     rows = cursor.fetchall()
+                    if len(rows) > 0:
+                        """"""
                     cursor.close()
                     conn.close()
 
