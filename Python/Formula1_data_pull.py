@@ -88,11 +88,12 @@ def html_to_df_csvDump(Formula1Years,current_year,cert_path):
             # However current year data will definitely update as it comes in
 
             if year == current_year:
+
                 #continue
                 config = {
                     'host': 'formula1-full-data.mysql.database.azure.com',
                     'user': 'dmlesper',
-                    'password': pswd,
+                    'password': input('Password? '),
                     'database': 'formula1',
                     'client_flags': [mysql.connector.ClientFlag.SSL],
                     'ssl_ca': cert_path
@@ -118,6 +119,7 @@ def html_to_df_csvDump(Formula1Years,current_year,cert_path):
                         """"""
                     cursor.close()
                     conn.close()
+                    break
 
 
 
