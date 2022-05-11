@@ -107,16 +107,18 @@ def html_to_df_csvDump(Formula1Years,current_year,cert_path):
                     cursor = conn.cursor()
                     current_year_df = df[df["year"] == current_year]
                     keys = list(current_year_df.columns)
-                    print(keys)
                     df_values_listoflists=current_year_df.values.tolist()
                     for df_value_list in df_values_listoflists:
-                        value_dictionary=dict(zip(keys,df_value_list))
+                        value_string=str(df_value_list)
                         print(value_dictionary)
                     query = """SELECT year FROM {category} WHERE year = {year}""".format(category=cat,year=current_year)
                     cursor.execute(query)
                     rows = cursor.fetchall()
+                    column_name_string = str(keys)
+                    print(column_name_string)
+
                     if len(rows) > 0:
-                        """"""
+                        update_query = '''INSERT INTO {category} ({column_names} VALUES ({}))'''
                     cursor.close()
                     conn.close()
                     break
